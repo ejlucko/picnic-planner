@@ -1,92 +1,56 @@
-# ☀️ Weather Picnic Planner
 
-Welcome to the Weather Picnic Planner code exercise! Your goal is to create a robust, intuitive application that helps users choose the best day for a picnic based on weather forecasts and historical trends. You will use the [Open-Meteo API](https://open-meteo.com/) as your primary weather data source.
+# 🌤️ Weather Picnic Planner
 
-## 🎯 Main Features and Requirements
+A compact React + TypeScript app that helps pick the best picnic day using a 2‑week forecast and 10‑year historical stats (Open‑Meteo).
 
-### 1. Interactive Two Week Forecast Calendar
+## Features
+- **Interactive 2‑week calendar** with color‑coded picnic suitability (green / yellow / red).
+- **Details panel** showing forecast metrics and 10‑year historical averages & variability for the selected date.
+- **Local caching** via IndexedDB with TTL to minimize API calls.
+- **API abstraction layer** (`WeatherProvider` interface) with an **Open‑Meteo** implementation. Swap providers easily.
+- Basic **location controls** (lat/lon).
 
-**Description:**
+## Suitability Criteria
+Defined in [`src/utils/scoring.ts`](src/utils/scoring.ts) — tweak thresholds as needed:
+```ts
+// Ideal (green): 18–28°C high, ≥10°C low, rain ≤20%, gusts ≤7 m/s
+// Fair (yellow): 12–32°C high, rain ≤40%, gusts ≤10 m/s
+// Otherwise: Poor (red)
+```
 
-- Display a calendar showing the next two weeks from today's date (inclusive of today).
-- Dates should be color coded according to picnic suitability:
-  - **Green:** Ideal picnic conditions (comfortable temperatures, low chance of rain).
-  - **Yellow:** Fair conditions (moderate temperatures, slight chance of rain).
-  - **Red:** Poor conditions (extreme temperatures, high chance of rain).
+## Caching Strategy
+- **Forecast**: cached for 30 minutes (keyed by lat, lon, start, end).
+- **Historical**: cached for 30 days (keyed by lat, lon, date, window).
+- Storage: **IndexedDB** (`picnic-cache-v1/kv`) with **TTL** per entry and automatic invalidation on read.
 
-**Architecture Considerations:**
+## Architecture
+- `src/services/weatherClient.ts`: `WeatherProvider` interface + `OpenMeteoClient` implementation for **forecast** and **ERA5 archive**.
+- `src/utils/scoring.ts`: pure scoring logic; tested independently or swapped per user prefs.
+- `src/components/*`: UI components (`CalendarGrid`, `DetailsPanel`).
 
-- Define clear criteria for "ideal," "fair," and "poor" conditions.
-- Implement efficient data fetching and caching.
+## How historical works
+For the selected day (e.g., `2025-05-20`), the app pulls the **same calendar date** for the previous 10 years from the Open‑Meteo ERA5 archive and aggregates mean and stdev for High/Low/Precip. Responses are cached to avoid repeated calls. In production you might batch by year ranges or offload to a backend for rate limiting.
 
-### 2. Detailed Weather View for Each Day
+## Run locally
+```bash
+pnpm i   # or npm i / yarn
+pnpm dev # or npm run dev
+```
+Then open the printed Local URL (default: http://localhost:5173).
 
-**Description:**
+## Build
+```bash
+pnpm build
+pnpm preview
+```
 
-- Clicking a date on the calendar should display:
-  - Forecasted temperature, precipitation, humidity, and wind details.
-  - Historical weather statistics for that date from the past 10 years (average temperatures, precipitation patterns, etc.).
+## Notes / Trade‑offs
+- Kept dependencies minimal for fast spin‑up. No design systems; minimal CSS.
+- No API keys required for Open‑Meteo.
+- If you prefer charts, add a small chart lib (Recharts) and plot historical distribution.
+- Extensibility: implement another class compatible with `WeatherProvider` and wire it up in `App.tsx`.
 
-**Architecture Considerations:**
-
-- Aggregate and clearly visualize historical data.
-- Handle multiple concurrent data requests efficiently.
-
-### 3. Local Storage and Data Caching
-
-**Description:**
-
-- Cache weather data locally to minimize unnecessary API calls and improve app performance.
-- Clearly document caching strategy including refresh intervals and cache invalidation.
-
-**Architecture Considerations:**
-
-- Choose appropriate local storage (e.g., localStorage, IndexedDB, SQLite).
-- Clearly document cache management strategies.
-
-### 4. API Abstraction and Extensibility
-
-**Description:**
-
-- Implement a clear abstraction layer around the Open-Meteo API.
-- Ensure your architecture allows easy substitution or addition of alternative weather data sources.
-
-**Architecture Considerations:**
-
-- Craft a clear interface design.
-
-## 📌 Bonus Features (Optional Stretch Goals)
-
-Consider implementing one or more of the following to showcase advanced architectural thinking:
-
-- **Location Selection:** Allow users to dynamically select or update their picnic location.
-- **User Preferences:** Enable users to customize weather criteria (e.g., temperature thresholds).
-
-## 🔨 Technical Expectations
-
-Clearly demonstrate the following in your submission:
-
-- Separation of concerns and modular design
-- Clear, maintainable, and well documented code
-- Performance considerations and optimizations
-- Handling of edge cases and errors
-- Thoughtful user experience (while not looking for UI perfection, we do want an easily useable interface)
-
-## 🛠 Deliverables
-
-- Working source code in a publicly accessible repository
-  - Fork this repo and submit a PR with from your repo to alert us that you are ready for us to review
-- Instructions on how to run, build, and test the application
-- Documentation (or README) explaining architecture decisions and trade-offs
-
-## 🎖 Evaluation Criteria
-
-Your submission will be evaluated based on:
-
-- **Architecture Quality** (modularity, maintainability, scalability)
-- **Code Clarity and Readability**
-- **Implementation of Core Features**
-
----
-
-Good luck, have fun, and happy coding! 🌤
+## Testing ideas (not included)
+- Unit test `scoreDay` thresholds.
+- Mock `OpenMeteoClient` to test UI without network.
+- Validate caching TTL & invalidation.
